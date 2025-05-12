@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ category }} Opportunities</title>
+  <style>
+    body {
+      background: #f4f0ff;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      color: #4b0082;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-left: 5px solid #6a0dad;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 720px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+      transition: box-shadow 0.3s ease, border-left-color 0.3s ease;
+    }
+    .card:hover {
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      border-left-color: #4b0082;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #4b0082;
+      margin-bottom: 8px;
+    }
+    .meta {
+      color: #555;
+      font-size: 14px;
+      margin: 4px 0;
+    }
+    .highlight {
+      font-weight: bold;
+      color: #a76f00;
+      background: #fff3cd;
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .eligibility {
+      background: #e0f8e9;
+      color: #2e7d32;
+    }
+    .apply-link {
+      display: inline-block;
+      margin-top: 12px;
+      background: #4b0082;
+      color: white;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+    .apply-link:hover {
+      background: #36005f;
+    }
+    .toggle-btn {
+      font-size: 14px;
+      color: #4b0082;
+      font-weight: 500;
+      margin-top: 10px;
+      cursor: pointer;
+      display: inline-block;
+    }
+    .description {
+      margin-top: 15px;
+      padding: 15px;
+      background: #faf8ff;
+      border: 1px solid #e0dfff;
+      border-radius: 8px;
+      display: none;
+      line-height: 1.6;
+      color: #333;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    .card.active .description {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+  <script>
+    function toggleDescription(index) {
+      const card = document.getElementById('card-' + index);
+      const btn = document.getElementById('toggle-btn-' + index);
+      const isActive = card.classList.toggle('active');
+      btn.innerText = isActive ? "Read Less ▲" : "Read More ▼";
+    }
+  </script>
+</head>
+<body>
+
+  <h1>{{ category }} Opportunities</h1>
+
+  {% if opportunities %}
+    {% for opp in opportunities %}
+    <div class="card" id="card-{{ loop.index }}">
+      <div class="title">📝 {{ opp.title }}</div>
+      <div class="meta">📧 From: {{ opp.from }}</div>
+      <div class="meta">📬 Received: {{ opp.received }}</div>
+
+    
+      {% if opp.deadline and opp.deadline != "Not found" %}
+      <div class="highlight">⏳ Last Date: {{ opp.deadline }}</div>
+      {% endif %}
+    
+
+      {% if opp.eligibility and opp.eligibility != "Not mentioned" %}
+      <div class="highlight eligibility" style="margin-top: 8px;">
+        ✅ Eligibility: {{ opp.eligibility }}
+      </div>
+      {% endif %}
+
+      {% if opp.application_link and opp.application_link != "Not provided" %}
+      <a href="{{ opp.application_link }}" class="apply-link" target="_blank">🔗 Apply Now</a>
+      {% endif %}
+    
+
+      <div id="toggle-btn-{{ loop.index }}" class="toggle-btn" onclick="toggleDescription({{ loop.index }})">
+        Read More ▼
+      </div>
+
+      <div class="description">
+        <strong>📖 Full Description:</strong><br><br>
+        <div class="body-text">{{ opp.description | safe }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="text-align: center;">No opportunities found for this category.</p>
+  {% endif %}
+
+</body>
+</html>
