@@ -108,7 +108,12 @@
 </head>
 <body>
 
-  <h1>{{ category }} Opportunities</h1>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <h1>{{ category }} Opportunities</h1>
+    <form action="/resume" method="get" style="margin: 0;">
+      <button type="submit" style="background-color: #6a0dad; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 16px; cursor: pointer; transition: background 0.3s ease;">📄 Resume</button>
+    </form>
+  </div>
 
   {% if opportunities %}
     {% for opp in opportunities %}

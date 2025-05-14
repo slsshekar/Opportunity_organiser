@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resume</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #4b0082;
+        }
+        .profile {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 30px;
+            border: 3px solid #4b0082;
+        }
+        header h1 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 2.5em;
+        }
+        header h3 {
+            margin: 10px 0;
+            color: #4b0082;
+            font-size: 1.5em;
+        }
+        header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        section {
+            margin-bottom: 30px;
+        }
+        section h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #4b0082;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+        li:before {
+            content: "•";
+            color: #4b0082;
+            position: absolute;
+            left: 0;
+        }
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .skill-item {
+            background: #4b0082;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        .references {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .reference-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4b0082;
+        }
+        .download-btn {
+            background: #4b0082;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            display: block;
+            margin: 30px auto;
+            transition: background 0.3s ease;
+        }
+        .download-btn:hover {
+            background: #3a0066;
+        }
+        @media print {
+            .download-btn {
+                display: none;
+            }
+            body {
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="{{ data.profile_image if data.profile_image else 'https://i.ibb.co/DGrKhr8/profile.png' }}" class="profile" alt="Profile Picture">
+            <div>
+                <h1>{{ data.name }}</h1>
+                <h3>{{ data.title }}</h3>
+                <p>
+                    {% if data.phone %}📞 {{ data.phone }}{% endif %}
+                    {% if data.email %} | ✉️ {{ data.email }}{% endif %}
+                    {% if data.website %} | 🌐 {{ data.website }}{% endif %}
+                </p>
+            </div>
+        </header>
+
+        {% if data.about %}
+        <section>
+            <h2>About Me</h2>
+            <p>{{ data.about }}</p>
+        </section>
+        {% endif %}
+
+        {% if data.edu1 or data.edu2 or data.edu3 %}
+        <section>
+            <h2>Education</h2>
+            <ul>
+                {% if data.edu1 %}<li>{{ data.edu1 }}</li>{% endif %}
+                {% if data.edu2 %}<li>{{ data.edu2 }}</li>{% endif %}
+                {% if data.edu3 %}<li>{{ data.edu3 }}</li>{% endif %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if data.exp1 or data.exp2 %}
+        <section>
+            <h2>Experience</h2>
+            <ul>
+                {% if data.exp1 %}<li>{{ data.exp1 }}</li>{% endif %}
+                {% if data.exp2 %}<li>{{ data.exp2 }}</li>{% endif %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if data.proj1 or data.proj2 or data.proj3 %}
+        <section>
+            <h2>Projects</h2>
+            <ul>
+                {% if data.proj1 %}<li>{{ data.proj1 }}</li>{% endif %}
+                {% if data.proj2 %}<li>{{ data.proj2 }}</li>{% endif %}
+                {% if data.proj3 %}<li>{{ data.proj3 }}</li>{% endif %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if data.skills %}
+        <section>
+            <h2>Skills</h2>
+            <div class="skills-list">
+                {% for skill in data.skills.split(',') %}
+                    <span class="skill-item">{{ skill.strip() }}</span>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if data.ref1 or data.ref2 %}
+        <section>
+            <h2>References</h2>
+            <div class="references">
+                {% if data.ref1 %}
+                <div class="reference-item">
+                    <p>{{ data.ref1 }}</p>
+                </div>
+                {% endif %}
+                {% if data.ref2 %}
+                <div class="reference-item">
+                    <p>{{ data.ref2 }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <form action="/resume/download" method="POST">
+            {% for key, value in data.items() %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}
+            <button type="submit" class="download-btn">Download PDF</button>
+        </form>
+    </div>
+</body>
+</html>

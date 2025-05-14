@@ -5,11 +5,41 @@ from email.header import decode_header
 from bs4 import BeautifulSoup
 import re
 import dateparser
+from flask import Flask, render_template, request, send_file, url_for, jsonify
+import os
+import pdfkit
+from werkzeug.utils import secure_filename
+import base64
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
+from pptx.dml.color import RGBColor
+from openai import OpenAI
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
 EMAIL = "shreelakshmisomshekar@gmail.com"
-PASSWORD = "app password"
+PASSWORD = "vformlfkgogfwkvs"
+
+# Configure OpenAI client
+client = OpenAI(
+    base_url="https://models.inference.ai.azure.com",
+    api_key="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"
+)
+
+# Configure upload folder
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create upload folder if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Path to wkhtmltopdf executable
+config = pdfkit.configuration(
+    wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
+)
 
 def categorize(subject, body):
     combined = (subject + " " + body).lower()
@@ -164,6 +194,243 @@ def show_categories():
 def show_opportunities(category):
     filtered = [e for e in email_cache if e["category"] == category]
     return render_template("opportunities.html", opportunities=filtered, category=category)
+
+# Resume functionality integration
+
+from flask import request, send_file, jsonify
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
+
+def generate_role_suggestions(role):
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a professional resume writer. Generate 3 different professional summaries for the given job role. Each summary should be 2-3 sentences long and highlight relevant skills and experience."
+                },
+                {
+                    "role": "user",
+                    "content": f"Generate professional summary for a {role} position."
+                }
+            ],
+            model="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=300,
+            top_p=1
+        )
+        suggestions = [choice.message.content.strip() for choice in response.choices]
+        return suggestions
+    except Exception as e:
+        print(f"Error generating role suggestions: {str(e)}")
+        return []
+
+def generate_skill_suggestions(role):
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a professional resume writer. Generate 5-7 relevant technical and soft skills for the given job role. Format each skill as a single word or short phrase without numbering."
+                },
+                {
+                    "role": "user",
+                    "content": f"Generate relevant skills for a {role} position without numbering."
+                }
+            ],
+            model="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=200,
+            top_p=1
+        )
+        suggestions = [skill.strip() for skill in response.choices[0].message.content.split('\n') if skill.strip()]
+        return suggestions
+    except Exception as e:
+        print(f"Error generating skill suggestions: {str(e)}")
+        return []
+
+def create_presentation(data):
+    prs = Presentation()
+    
+    # Title slide
+    title_slide_layout = prs.slide_layouts[0]
+    slide = prs.slides.add_slide(title_slide_layout)
+    title = slide.shapes.title
+    subtitle = slide.placeholders[1]
+    
+    title.text = data['name']
+    subtitle.text = data['title']
+    
+    # About slide
+    bullet_slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(bullet_slide_layout)
+    shapes = slide.shapes
+    
+    title_shape = shapes.title
+    body_shape = shapes.placeholders[1]
+    
+    title_shape.text = "About Me"
+    tf = body_shape.text_frame
+    tf.text = data['about']
+    
+    # Education slide
+    slide = prs.slides.add_slide(bullet_slide_layout)
+    shapes = slide.shapes
+    
+    title_shape = shapes.title
+    body_shape = shapes.placeholders[1]
+    
+    title_shape.text = "Education"
+    tf = body_shape.text_frame
+    
+    if data.get('edu1'):
+        p = tf.add_paragraph()
+        p.text = data['edu1']
+    if data.get('edu2'):
+        p = tf.add_paragraph()
+        p.text = data['edu2']
+    if data.get('edu3'):
+        p = tf.add_paragraph()
+        p.text = data['edu3']
+    
+    # Experience slide
+    slide = prs.slides.add_slide(bullet_slide_layout)
+    shapes = slide.shapes
+    
+    title_shape = shapes.title
+    body_shape = shapes.placeholders[1]
+    
+    title_shape.text = "Experience"
+    tf = body_shape.text_frame
+    
+    if data.get('exp1'):
+        p = tf.add_paragraph()
+        p.text = data['exp1']
+    if data.get('exp2'):
+        p = tf.add_paragraph()
+        p.text = data['exp2']
+    
+    # Skills slide
+    slide = prs.slides.add_slide(bullet_slide_layout)
+    shapes = slide.shapes
+    
+    title_shape = shapes.title
+    body_shape = shapes.placeholders[1]
+    
+    title_shape.text = "Skills"
+    tf = body_shape.text_frame
+    
+    if data.get('skills'):
+        for skill in data['skills'].split(','):
+            p = tf.add_paragraph()
+            p.text = skill.strip()
+    
+    # References slide
+    slide = prs.slides.add_slide(bullet_slide_layout)
+    shapes = slide.shapes
+    
+    title_shape = shapes.title
+    body_shape = shapes.placeholders[1]
+    
+    title_shape.text = "References"
+    tf = body_shape.text_frame
+    
+    if data.get('ref1'):
+        p = tf.add_paragraph()
+        p.text = data['ref1']
+    if data.get('ref2'):
+        p = tf.add_paragraph()
+        p.text = data['ref2']
+    
+    # Save the presentation
+    presentation_path = "resume_presentation.pptx"
+    prs.save(presentation_path)
+    return presentation_path
+
+@app.route('/resume', methods=['GET', 'POST'])
+def resume_form():
+    if request.method == 'POST':
+        data = request.form.to_dict()
+        
+        # Handle image upload
+        if 'profile_image' in request.files:
+            file = request.files['profile_image']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                data['profile_image'] = url_for('static', filename=f'resume/uploads/{filename}')
+        
+        # Choose template based on format
+        template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'
+        
+        return render_template(template, data=data)
+    return render_template('resume/form.html')
+
+@app.route('/resume/get_role_suggestions', methods=['POST'])
+def resume_get_role_suggestions():
+    data = request.get_json()
+    role = data.get('role', '')
+    suggestions = generate_role_suggestions(role)
+    return jsonify({'suggestions': suggestions})
+
+@app.route('/resume/get_skill_suggestions', methods=['POST'])
+def resume_get_skill_suggestions():
+    data = request.get_json()
+    role = data.get('role', '')
+    suggestions = generate_skill_suggestions(role)
+    return jsonify({'suggestions': suggestions})
+
+@app.route('/resume/download', methods=['POST'])
+def resume_download():
+    data = request.form.to_dict()
+    
+    # Handle image in the data
+    if 'profile_image' in data:
+        # Convert image to base64 for PDF embedding
+        image_path = os.path.join(app.root_path, 'static', data['profile_image'].lstrip('/'))
+        if os.path.exists(image_path):
+            with open(image_path, 'rb') as img_file:
+                data['profile_image'] = f"data:image/jpeg;base64,{base64.b64encode(img_file.read()).decode()}"
+    
+    # Choose template based on format
+    template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'
+    html = render_template(template, data=data)
+
+    # Enable local file access and set PDF options
+    options = {
+        'enable-local-file-access': '',
+        'page-size': 'A4',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'quiet': ''
+    }
+
+    # Generate the PDF
+    pdfkit.from_string(html, 'resume.pdf', configuration=config, options=options)
+    
+    # If presentation format is requested
+    if data.get('output_presentation'):
+        presentation_path = create_presentation(data)
+        return jsonify({
+            'pdf_url': url_for('resume_download_pdf'),
+            'presentation_url': url_for('resume_download_presentation')
+        })
+    
+    return send_file('resume.pdf', as_attachment=True)
+
+@app.route('/resume/download_pdf')
+def resume_download_pdf():
+    return send_file('resume.pdf', as_attachment=True)
+
+@app.route('/resume/download_presentation')
+def resume_download_presentation():
+    return send_file('resume_presentation.pptx', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)

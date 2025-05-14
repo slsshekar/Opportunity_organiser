@@ -33,12 +33,29 @@
     button:hover {
       background-color: #4b0082;
     }
+    .resume-button {
+      margin-top: 10px;
+      background-color: #6a0dad;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .resume-button:hover {
+      background-color: #4b0082;
+    }
   </style>
 </head>
 <body>
   <h1>📬 Opportunity Organizer Dashboard</h1>
   <form action="/analyze" method="get">
     <button type="submit">🔍 Analyze Emails</button>
+  </form>
+  <form action="/resume" method="get">
+    <button type="submit" class="resume-button">📄 Resume</button>
   </form>
 </body>
 </html>
