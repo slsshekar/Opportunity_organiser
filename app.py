@@ -20,12 +20,12 @@ from dotenv import load_dotenv
 app = Flask(__name__)
 
 EMAIL = "shreelakshmisomshekar@gmail.com"
-PASSWORD = "vformlfkgogfwkvs"
+PASSWORD = ""
 
 # Configure OpenAI client
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
-    api_key="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"
+    api_key=""
 )
 
 # Configure upload folder
