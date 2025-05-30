@@ -111,10 +111,10 @@ def clean_email_body(raw_html):
                   r'<a href="\1" target="_blank" style="color:#4b0082; text-decoration:underline;">\1</a>', text)
     return text
 
-def fetch_emails():
+def fetch_emails(email_address, email_password):
     results = []
     imap = imaplib.IMAP4_SSL("imap.gmail.com")
-    imap.login(EMAIL, PASSWORD)
+    imap.login(email_address, email_password)
     imap.select("inbox")
 
     status, messages = imap.search(None, "ALL")
@@ -255,7 +255,12 @@ def verify_otp():
 @app.route('/analyze')
 def analyze():
     global email_cache
-    email_cache = fetch_emails()
+    pending_email = session.get('email')
+    pending_password = session.get('password')
+    if not pending_email or not pending_password:
+        flash("Email credentials not found in session. Please register again.", "error")
+        return redirect(url_for('register'))
+    email_cache = fetch_emails(pending_email, pending_password)
     return redirect(url_for('show_categories'))
 
 @app.route('/categories')
