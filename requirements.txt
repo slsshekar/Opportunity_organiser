@@ -1,0 +1,8 @@
+flask
+beautifulsoup4
+dateparser
+pdfkit
+werkzeug
+python-pptx
+openai
+python-dotenv

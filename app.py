@@ -1,11 +1,10 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, request, send_file, url_for, jsonify, session, flash
 import imaplib
 import email
 from email.header import decode_header
 from bs4 import BeautifulSoup
 import re
 import dateparser
-from flask import Flask, render_template, request, send_file, url_for, jsonify
 import os
 import pdfkit
 from werkzeug.utils import secure_filename
@@ -16,17 +15,57 @@ from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 from openai import OpenAI
 from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback_secret_key')
 
-EMAIL = "shreelakshmisomshekar@gmail.com"
-PASSWORD = ""
+EMAIL = os.getenv('SENDER_EMAIL')
+PASSWORD = os.getenv('SENDER_APP_PASSWORD')
+
+import random
+
+# Store OTPs temporarily in memory (for demo purposes)
+otp_store = {}
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
 
 # Configure OpenAI client
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if not openai_api_key:
+    raise ValueError("OpenAI API key not set in environment variables")
+
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
-    api_key=""
+    api_key=openai_api_key
 )
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+
+def send_otp_email(to_email, otp):
+    sender_email = os.getenv("SENDER_EMAIL")
+    sender_password = os.getenv("SENDER_APP_PASSWORD")
+    if not sender_email or not sender_password:
+        raise ValueError("Sender email credentials not set in environment variables")
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Your OTP Verification Code"
+    message["From"] = sender_email
+    message["To"] = to_email
+
+    text = f"Your OTP code is: {otp}"
+    part = MIMEText(text, "plain")
+    message.attach(part)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, to_email, message.as_string())
 
 # Configure upload folder
 UPLOAD_FOLDER = 'static/uploads'
@@ -39,6 +78,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Path to wkhtmltopdf executable
 config = pdfkit.configuration(
     wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
+    # wkhtmltopdf=r"/usr/local/bin/wkhtmltopdf",
+
 )
 
 def categorize(subject, body):
@@ -167,7 +208,49 @@ email_cache = []
 
 @app.route('/')
 def home():
+    if 'email' not in session or 'password' not in session:
+        return redirect(url_for('register'))
     return render_template('landing.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email_input = request.form.get('email')
+        app_password = request.form.get('app_password')
+        if not email_input or not app_password:
+            flash("Email and App Password are required.", "error")
+            return render_template('registration.html')
+        otp = generate_otp()
+        otp_store[email_input] = otp
+        try:
+            send_otp_email(email_input, otp)
+        except Exception as e:
+            flash(f"Failed to send OTP email: {str(e)}", "error")
+            return render_template('registration.html')
+        session['pending_email'] = email_input
+        session['pending_password'] = app_password
+        return redirect(url_for('verify_otp'))
+    return render_template('registration.html')
+
+@app.route('/verify_otp', methods=['GET', 'POST'])
+def verify_otp():
+    if request.method == 'POST':
+        user_otp = request.form.get('otp')
+        pending_email = session.get('pending_email')
+        if not pending_email or not user_otp:
+            flash("Invalid session or OTP.", "error")
+            return redirect(url_for('register'))
+        real_otp = otp_store.get(pending_email)
+        if real_otp == user_otp:
+            session['email'] = pending_email
+            session['password'] = session.get('pending_password')
+            otp_store.pop(pending_email, None)
+            session.pop('pending_email', None)
+            session.pop('pending_password', None)
+            return redirect(url_for('home'))
+        else:
+            flash("Incorrect OTP. Please try again.", "error")
+    return render_template('otp_verification.html')
 
 @app.route('/analyze')
 def analyze():
@@ -360,7 +443,7 @@ def resume_form():
                 filename = secure_filename(file.filename)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
-                data['profile_image'] = url_for('static', filename=f'resume/uploads/{filename}')
+                data['profile_image'] = url_for('static', filename=f'uploads/{filename}')
         
         # Choose template based on format
         template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'

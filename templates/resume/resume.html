@@ -126,7 +126,11 @@
 <body>
     <div class="container">
         <header>
-            <img src="{{ data.profile_image if data.profile_image else 'https://i.ibb.co/DGrKhr8/profile.png' }}" class="profile" alt="Profile Picture">
+            {% if data.profile_image %}
+            <img src="{{ data.profile_image }}" class="profile" alt="Profile Picture">
+            {% else %}
+            <img src="https://i.ibb.co/DGrKhr8/profile.png" class="profile" alt="Profile Picture">
+            {% endif %}
             <div>
                 <h1>{{ data.name }}</h1>
                 <h3>{{ data.title }}</h3>

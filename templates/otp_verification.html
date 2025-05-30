@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OTP Verification - Opportunity Organizer</title>
+  <style>
+    body {
+      background: #f4f0ff;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h2 {
+      color: #4b0082;
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    form {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    label {
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #4b0082;
+      align-self: flex-start;
+    }
+    input[type="text"] {
+      padding: 10px 12px;
+      margin-bottom: 20px;
+      border: 1.5px solid #6a0dad;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.3s ease;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="text"]:focus {
+      border-color: #4b0082;
+    }
+    input[type="submit"] {
+      background-color: #6a0dad;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 0;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      width: 100%;
+    }
+    input[type="submit"]:hover {
+      background-color: #4b0082;
+    }
+    ul {
+      margin-top: 10px;
+      padding-left: 0;
+      list-style: none;
+      color: #a00;
+      font-weight: 600;
+      width: 100%;
+    }
+    li.error {
+      margin-bottom: 6px;
+    }
+    li.success {
+      color: #28a745;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h2>OTP Verification</h2>
+  <form method="post" action="{{ url_for('verify_otp') }}">
+    <label for="otp">Enter OTP:</label>
+    <input type="text" id="otp" name="otp" required />
+    <input type="submit" value="Verify" />
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </form>
+</body>
+</html>
