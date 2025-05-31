@@ -448,46 +448,6 @@ def generate_skill_suggestions(role):
         print(f"Error generating skill suggestions: {str(e)}")
         return []
 
-
-def generate_skill_suggestions(role):
-    try:
-        response = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a professional resume writer."
-                        " Generate 5-7 relevant "
-                        "technical and soft skills for "
-                        "the given job role."
-                        " Format each "
-                        "skill as a single word or short phrase "
-                        "without numbering."),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Generate relevant skills for a {role} "
-                        "position without numbering."),
-
-                },
-            ],
-            model="gpt-4o-mini",
-            temperature=0.7,
-            max_tokens=200,
-            top_p=1,
-        )
-        suggestions = [
-            skill.strip()
-            for skill in response.choices[0].message.content.split('\n')
-            if skill.strip()
-        ]
-        return suggestions
-    except Exception as e:
-        print(f"Error generating skill suggestions: {str(e)}")
-        return []
-
-
 def create_presentation(data):
     prs = Presentation()
 
@@ -638,7 +598,10 @@ def resume_download():
         if os.path.exists(image_path):
             with open(image_path, 'rb') as img_file:
                 encoded_image = base64.b64encode(img_file.read()).decode()
-                data['profile_image'] = f"data:image/jpeg;base64,{encoded_image}"
+                data['profile_image'] = (
+                  f"data:image/jpeg;base64,{encoded_image}"
+)
+
 
     # Choose template based on format
     template = 'resume/resume_professional.html' if data.get(
