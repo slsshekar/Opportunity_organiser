@@ -1,7 +1,9 @@
-from flask import Flask, render_template, redirect, url_for, request, send_file, url_for, jsonify, session, flash
+from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash
 import imaplib
 import email
 from email.header import decode_header
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from bs4 import BeautifulSoup
 import re
 import dateparser
@@ -10,12 +12,10 @@ import pdfkit
 from werkzeug.utils import secure_filename
 import base64
 from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
-from pptx.dml.color import RGBColor
 from openai import OpenAI
 from dotenv import load_dotenv
-import os
+import random
+import smtplib
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -24,8 +24,6 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback_secret_key')
 
 EMAIL = os.getenv('SENDER_EMAIL')
 PASSWORD = os.getenv('SENDER_APP_PASSWORD')
-
-import random
 
 # Store OTPs temporarily in memory (for demo purposes)
 otp_store = {}
@@ -42,11 +40,6 @@ client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
     api_key=openai_api_key
 )
-
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import os
 
 def send_otp_email(to_email, otp):
     sender_email = os.getenv("SENDER_EMAIL")
@@ -79,7 +72,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 config = pdfkit.configuration(
     wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
     # wkhtmltopdf=r"/usr/local/bin/wkhtmltopdf",
-
 )
 
 def categorize(subject, body):
@@ -90,7 +82,8 @@ def categorize(subject, body):
         return "Full-time Job"
     elif "hackathon" in combined:
         return "Hackathon"
-    elif any(k in combined for k in ["apply", "register", "opportunity", "opening", "recruitment", "role"]):
+    elif any(k in combined for k in ["apply", "register", "opportunity", "opening",
+                                     "recruitment", "role"]):
         return "Other Opportunities"
     else:
         return "Ignore"
@@ -106,9 +99,12 @@ def clean_email_body(raw_html):
     for kw in keywords:
         regex = re.compile(rf'\b({kw})\b', re.IGNORECASE)
         text = regex.sub(
-            r'<span style="background: #fff3cd; color: #a76f00; font-weight: bold;">\1</span>', text)
-    text = re.sub(r'(https?://[^\s]+)',
-                  r'<a href="\1" target="_blank" style="color:#4b0082; text-decoration:underline;">\1</a>', text)
+            r'<span style="background: #fff3cd; color: #a76f00; font-weight: bold;">\1</span>',
+            text)
+    text = re.sub(
+        r'(https?://[^\s]+)',
+        r'<a href="\1" target="_blank" style="color:#4b0082; text-decoration:underline;">\1</a>',
+        text)
     return text
 
 def fetch_emails(email_address, email_password):
@@ -212,6 +208,7 @@ def home():
         return redirect(url_for('register'))
     return render_template('landing.html')
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -231,6 +228,7 @@ def register():
         session['pending_password'] = app_password
         return redirect(url_for('verify_otp'))
     return render_template('registration.html')
+
 
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
@@ -252,6 +250,7 @@ def verify_otp():
             flash("Incorrect OTP. Please try again.", "error")
     return render_template('otp_verification.html')
 
+
 @app.route('/analyze')
 def analyze():
     global email_cache
@@ -262,6 +261,7 @@ def analyze():
         return redirect(url_for('register'))
     email_cache = fetch_emails(pending_email, pending_password)
     return redirect(url_for('show_categories'))
+
 
 @app.route('/categories')
 def show_categories():
@@ -278,17 +278,17 @@ def show_categories():
     total = len(email_cache)
     return render_template("categories.html", category_counts=category_counts, total=total)
 
+
 @app.route('/opportunities/<category>')
 def show_opportunities(category):
     filtered = [e for e in email_cache if e["category"] == category]
     return render_template("opportunities.html", opportunities=filtered, category=category)
 
+
 # Resume functionality integration
 
-from flask import request, send_file, jsonify
-
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def generate_role_suggestions(role):
     try:
@@ -340,38 +340,38 @@ def generate_skill_suggestions(role):
 
 def create_presentation(data):
     prs = Presentation()
-    
+
     # Title slide
     title_slide_layout = prs.slide_layouts[0]
     slide = prs.slides.add_slide(title_slide_layout)
     title = slide.shapes.title
     subtitle = slide.placeholders[1]
-    
+
     title.text = data['name']
     subtitle.text = data['title']
-    
+
     # About slide
     bullet_slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(bullet_slide_layout)
     shapes = slide.shapes
-    
+
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    
+
     title_shape.text = "About Me"
     tf = body_shape.text_frame
     tf.text = data['about']
-    
+
     # Education slide
     slide = prs.slides.add_slide(bullet_slide_layout)
     shapes = slide.shapes
-    
+
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    
+
     title_shape.text = "Education"
     tf = body_shape.text_frame
-    
+
     if data.get('edu1'):
         p = tf.add_paragraph()
         p.text = data['edu1']
@@ -381,56 +381,56 @@ def create_presentation(data):
     if data.get('edu3'):
         p = tf.add_paragraph()
         p.text = data['edu3']
-    
+
     # Experience slide
     slide = prs.slides.add_slide(bullet_slide_layout)
     shapes = slide.shapes
-    
+
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    
+
     title_shape.text = "Experience"
     tf = body_shape.text_frame
-    
+
     if data.get('exp1'):
         p = tf.add_paragraph()
         p.text = data['exp1']
     if data.get('exp2'):
         p = tf.add_paragraph()
         p.text = data['exp2']
-    
+
     # Skills slide
     slide = prs.slides.add_slide(bullet_slide_layout)
     shapes = slide.shapes
-    
+
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    
+
     title_shape.text = "Skills"
     tf = body_shape.text_frame
-    
+
     if data.get('skills'):
         for skill in data['skills'].split(','):
             p = tf.add_paragraph()
             p.text = skill.strip()
-    
+
     # References slide
     slide = prs.slides.add_slide(bullet_slide_layout)
     shapes = slide.shapes
-    
+
     title_shape = shapes.title
     body_shape = shapes.placeholders[1]
-    
+
     title_shape.text = "References"
     tf = body_shape.text_frame
-    
+
     if data.get('ref1'):
         p = tf.add_paragraph()
         p.text = data['ref1']
     if data.get('ref2'):
         p = tf.add_paragraph()
         p.text = data['ref2']
-    
+
     # Save the presentation
     presentation_path = "resume_presentation.pptx"
     prs.save(presentation_path)
@@ -440,7 +440,7 @@ def create_presentation(data):
 def resume_form():
     if request.method == 'POST':
         data = request.form.to_dict()
-        
+
         # Handle image upload
         if 'profile_image' in request.files:
             file = request.files['profile_image']
@@ -449,10 +449,10 @@ def resume_form():
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 data['profile_image'] = url_for('static', filename=f'uploads/{filename}')
-        
+
         # Choose template based on format
         template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'
-        
+
         return render_template(template, data=data)
     return render_template('resume/form.html')
 
@@ -473,7 +473,7 @@ def resume_get_skill_suggestions():
 @app.route('/resume/download', methods=['POST'])
 def resume_download():
     data = request.form.to_dict()
-    
+
     # Handle image in the data
     if 'profile_image' in data:
         # Convert image to base64 for PDF embedding
@@ -481,7 +481,7 @@ def resume_download():
         if os.path.exists(image_path):
             with open(image_path, 'rb') as img_file:
                 data['profile_image'] = f"data:image/jpeg;base64,{base64.b64encode(img_file.read()).decode()}"
-    
+
     # Choose template based on format
     template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'
     html = render_template(template, data=data)
@@ -501,7 +501,7 @@ def resume_download():
 
     # Generate the PDF
     pdfkit.from_string(html, 'resume.pdf', configuration=config, options=options)
-    
+
     # If presentation format is requested
     if data.get('output_presentation'):
         presentation_path = create_presentation(data)
@@ -509,7 +509,7 @@ def resume_download():
             'pdf_url': url_for('resume_download_pdf'),
             'presentation_url': url_for('resume_download_presentation')
         })
-    
+
     return send_file('resume.pdf', as_attachment=True)
 
 @app.route('/resume/download_pdf')
