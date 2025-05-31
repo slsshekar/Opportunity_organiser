@@ -6,3 +6,4 @@ werkzeug
 python-pptx
 openai
 python-dotenv
+pytest
