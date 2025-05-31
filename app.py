@@ -41,7 +41,7 @@ def generate_otp():
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     raise ValueError(
-        "OpenAI API key not set in environment variables"
+        "OpenAI API key not set in environment variable"
     )
 
 
