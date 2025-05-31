@@ -448,6 +448,7 @@ def generate_skill_suggestions(role):
         print(f"Error generating skill suggestions: {str(e)}")
         return []
 
+
 def create_presentation(data):
     prs = Presentation()
 
@@ -599,10 +600,8 @@ def resume_download():
             with open(image_path, 'rb') as img_file:
                 encoded_image = base64.b64encode(img_file.read()).decode()
                 data['profile_image'] = (
-                  f"data:image/jpeg;base64,{encoded_image}"
-)
-
-
+                f"data:image/jpeg;base64,{encoded_image}")
+            
     # Choose template based on format
     template = 'resume/resume_professional.html' if data.get(
         'format') == 'professional' else 'resume/resume.html'
