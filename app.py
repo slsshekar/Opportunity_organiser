@@ -379,14 +379,15 @@ def generate_role_suggestions(role):
                 {
                     "role": "system",
                     "content": (
-                        "You are a professional resume writer. Generate 3 different "
-                        "professional summaries for the given job role. Each summary "
-                        "should be 2-3 sentences long and highlight relevant skills and "
-                        "experience."),
+                        "You are a professional resume writer.  "
+                        "Generate 3 different professional  "
+                        "summaries for the given job role. Each summary "
+                        "should be 2-3 sentences long  "
+                        "and highlight relevant skills and experience."),
                 },
                 {
                     "role": "user",
-                    "content": f"Generate professional summary for a {role} position.",
+                    "content": f"Generate summary for a {role} position.",
                 },
             ],
             model="gpt-4o-mini",
@@ -409,9 +410,13 @@ def generate_skill_suggestions(role):
                 {
                     "role": "system",
                     "content": (
-                        "You are a professional resume writer. Generate 5-7 relevant "
-                        "technical and soft skills for the given job role. Format each "
-                        "skill as a single word or short phrase without numbering."),
+                        "You are a professional resume writer."
+                        " Generate 5-7 relevant "
+                        "technical and soft skills for "
+                        "the given job role."
+                        " Format each "
+                        "skill as a single word or short phrase "
+                        "without numbering."),
                 },
                 {
                     "role": "user",
