@@ -175,17 +175,22 @@ def fetch_emails(email_address, email_password):
             for part in msg.walk():
                 ctype = part.get_content_type()
                 if ctype == "text/html":
-                    raw_html = part.get_payload(decode=True).decode(errors="ignore")
+                    raw_html = part.get_payload(
+                        decode=True).decode(
+                        errors="ignore")
                     soup = BeautifulSoup(raw_html, "html.parser")
                     plain_text_body = soup.get_text(separator="\n").strip()
                     body = clean_email_body(raw_html)
                     break
                 elif ctype == "text/plain" and not plain_text_body:
-                    plain_text_body = part.get_payload(decode=True).decode(errors="ignore")
+                    plain_text_body = part.get_payload(
+                        decode=True).decode(errors="ignore")
                     body = clean_email_body(plain_text_body)
         else:
             raw_text = msg.get_payload(decode=True).decode(errors="ignore")
-            plain_text_body = BeautifulSoup(raw_text, "html.parser").get_text(separator="\n").strip()
+            plain_text_body = BeautifulSoup(
+                raw_text, "html.parser").get_text(
+                separator="\n").strip()
             body = clean_email_body(raw_text)
 
         # Extract apply link
@@ -227,7 +232,10 @@ def fetch_emails(email_address, email_password):
                     break
 
         # Eligibility
-        elig_match = re.search(r'(eligibility[^:\n]*[:\n])(.+)', body, re.IGNORECASE)
+        elig_match = re.search(
+            r'(eligibility[^:\n]*[:\n])(.+)',
+            body,
+            re.IGNORECASE)
         if elig_match:
             eligibility = elig_match.group(2).strip()
 
@@ -283,7 +291,6 @@ def register():
         session['pending_password'] = app_password
         return redirect(url_for('verify_otp'))
 
-
     return render_template('registration.html')
 
 
@@ -316,7 +323,9 @@ def analyze():
     pending_email = session.get('email')
     pending_password = session.get('password')
     if not pending_email or not pending_password:
-        flash("Email credentials not found in session. Please register again.", "error")
+        flash(
+            "Email credentials not found in session. Please register again.",
+            "error")
         return redirect(url_for('register'))
 
     email_cache = fetch_emails(pending_email, pending_password)
@@ -349,14 +358,18 @@ def show_categories():
 @app.route('/opportunities/<category>')
 def show_opportunities(category):
     filtered = [e for e in email_cache if e["category"] == category]
-    return render_template("opportunities.html", opportunities=filtered, category=category)
+    return render_template(
+        "opportunities.html",
+        opportunities=filtered,
+        category=category)
 
 
 # Resume functionality integration
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit(
+        '.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def generate_role_suggestions(role):
@@ -369,8 +382,7 @@ def generate_role_suggestions(role):
                         "You are a professional resume writer. Generate 3 different "
                         "professional summaries for the given job role. Each summary "
                         "should be 2-3 sentences long and highlight relevant skills and "
-                        "experience."
-                    ),
+                        "experience."),
                 },
                 {
                     "role": "user",
@@ -382,7 +394,8 @@ def generate_role_suggestions(role):
             max_tokens=300,
             top_p=1,
         )
-        suggestions = [choice.message.content.strip() for choice in response.choices]
+        suggestions = [choice.message.content.strip()
+                       for choice in response.choices]
         return suggestions
     except Exception as e:
         print(f"Error generating role suggestions: {str(e)}")
@@ -398,8 +411,7 @@ def generate_skill_suggestions(role):
                     "content": (
                         "You are a professional resume writer. Generate 5-7 relevant "
                         "technical and soft skills for the given job role. Format each "
-                        "skill as a single word or short phrase without numbering."
-                    ),
+                        "skill as a single word or short phrase without numbering."),
                 },
                 {
                     "role": "user",
@@ -531,10 +543,12 @@ def resume_form():
                 filename = secure_filename(file.filename)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
-                data['profile_image'] = url_for('static', filename=f'uploads/{filename}')
+                data['profile_image'] = url_for(
+                    'static', filename=f'uploads/{filename}')
 
         # Choose template based on format
-        template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'
+        template = 'resume/resume_professional.html' if data.get(
+            'format') == 'professional' else 'resume/resume.html'
 
         return render_template(template, data=data)
     return render_template('resume/form.html')
@@ -563,13 +577,17 @@ def resume_download():
     # Handle image in the data
     if 'profile_image' in data:
         # Convert image to base64 for PDF embedding
-        image_path = os.path.join(app.root_path, 'static', data['profile_image'].lstrip('/'))
+        image_path = os.path.join(
+            app.root_path,
+            'static',
+            data['profile_image'].lstrip('/'))
         if os.path.exists(image_path):
             with open(image_path, 'rb') as img_file:
                 data['profile_image'] = f"data:image/jpeg;base64,{base64.b64encode(img_file.read()).decode()}"
 
     # Choose template based on format
-    template = 'resume/resume_professional.html' if data.get('format') == 'professional' else 'resume/resume.html'
+    template = 'resume/resume_professional.html' if data.get(
+        'format') == 'professional' else 'resume/resume.html'
     html = render_template(template, data=data)
 
     # Enable local file access and set PDF options
@@ -586,7 +604,11 @@ def resume_download():
     }
 
     # Generate the PDF
-    pdfkit.from_string(html, 'resume.pdf', configuration=config, options=options)
+    pdfkit.from_string(
+        html,
+        'resume.pdf',
+        configuration=config,
+        options=options)
 
     # If presentation format is requested
     if data.get('output_presentation'):
