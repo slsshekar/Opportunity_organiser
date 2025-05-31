@@ -94,6 +94,113 @@ def categorize(subject, body):
         or "full-time" in combined
         or "job" in combined
     ):
+        return "Full-time<thinking>
+There are still many E501 line too long errors reported. These are mostly lines exceeding 79 characters.
+
+I will fix these by breaking the long lines into multiple lines with proper indentation to comply with the 79 character limit.
+
+I will prepare the full updated file content with these line breaks applied and present it for confirmation before writing.
+</thinking>
+
+<create_file>
+<path>Opportunity_organiser/app.py</path>
+<content>
+from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash
+import imaplib
+import email as email_module
+from email.header import decode_header
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from bs4 import BeautifulSoup
+import re
+import dateparser
+import os
+import pdfkit
+from werkzeug.utils import secure_filename
+import base64
+from pptx import Presentation
+from openai import OpenAI
+from dotenv import load_dotenv
+import random
+import smtplib
+
+load_dotenv()  # Load environment variables from .env file
+
+
+app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback_secret_key')
+
+EMAIL = os.getenv('SENDER_EMAIL')
+PASSWORD = os.getenv('SENDER_APP_PASSWORD')
+
+# Store OTPs temporarily in memory (for demo purposes)
+otp_store = {}
+
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
+
+
+# Configure OpenAI client
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if not openai_api_key:
+    raise ValueError(
+        "OpenAI API key not set in environment variables"
+    )
+
+
+client = OpenAI(
+    base_url="https://models.inference.ai.azure.com",
+    api_key=openai_api_key
+)
+
+
+def send_otp_email(to_email, otp):
+    sender_email = os.getenv("SENDER_EMAIL")
+    sender_password = os.getenv("SENDER_APP_PASSWORD")
+    if not sender_email or not sender_password:
+        raise ValueError(
+            "Sender email credentials not set in environment variables"
+        )
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Your OTP Verification Code"
+    message["From"] = sender_email
+    message["To"] = to_email
+
+    text = f"Your OTP code is: {otp}"
+    part = MIMEText(text, "plain")
+    message.attach(part)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, to_email, message.as_string())
+
+
+# Configure upload folder
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create upload folder if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Path to wkhtmltopdf executable
+config = pdfkit.configuration(
+    wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
+    # wkhtmltopdf=r"/usr/local/bin/wkhtmltopdf",
+)
+
+
+def categorize(subject, body):
+    combined = (subject + " " + body).lower()
+    if "internship" in combined:
+        return "Internship"
+    elif (
+        "full time" in combined
+        or "full-time" in combined
+        or "job" in combined
+    ):
         return "Full-time Job"
     elif "hackathon" in combined:
         return "Hackathon"
@@ -203,7 +310,9 @@ def fetch_emails(email_address, email_password):
                 "before",
             ]:
                 if kw in line.lower():
-                    parsed = dateparser.parse(line, settings={'PREFER_DATES_FROM': 'future'})
+                    parsed = dateparser.parse(
+                        line, settings={'PREFER_DATES_FROM': 'future'}
+                    )
                     if parsed:
                         deadline = parsed.strftime("%d/%m/%Y")
                         found = True
@@ -214,7 +323,9 @@ def fetch_emails(email_address, email_password):
         # If no keyword-based date, try any date
         if deadline == "Not found":
             for line in plain_text_body.splitlines():
-                parsed = dateparser.parse(line, settings={'PREFER_DATES_FROM': 'future'})
+                parsed = dateparser.parse(
+                    line, settings={'PREFER_DATES_FROM': 'future'}
+                )
                 if parsed:
                     deadline = parsed.strftime("%d/%m/%Y")
                     break
@@ -227,16 +338,18 @@ def fetch_emails(email_address, email_password):
         category = categorize(subject, body)
 
         if category != "Ignore":
-            results.append({
-                "title": subject.strip(),
-                "from": from_,
-                "received": received,
-                "description": body,
-                "deadline": deadline,
-                "eligibility": eligibility,
-                "application_link": app_link,
-                "category": category,
-            })
+            results.append(
+                {
+                    "title": subject.strip(),
+                    "from": from_,
+                    "received": received,
+                    "description": body,
+                    "deadline": deadline,
+                    "eligibility": eligibility,
+                    "application_link": app_link,
+                    "category": category,
+                }
+            )
             print(f"[DEBUG] {subject} → Deadline: {deadline}")
 
     imap.logout()
