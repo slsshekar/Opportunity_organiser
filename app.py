@@ -1,6 +1,6 @@
 from flask import Flask, render_template, redirect, url_for, request, send_file, jsonify, session, flash
 import imaplib
-import email
+import email as email_module
 from email.header import decode_header
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -19,6 +19,7 @@ import smtplib
 
 load_dotenv()  # Load environment variables from .env file
 
+
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'fallback_secret_key')
 
@@ -28,24 +29,32 @@ PASSWORD = os.getenv('SENDER_APP_PASSWORD')
 # Store OTPs temporarily in memory (for demo purposes)
 otp_store = {}
 
+
 def generate_otp():
     return str(random.randint(100000, 999999))
+
 
 # Configure OpenAI client
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
-    raise ValueError("OpenAI API key not set in environment variables")
+    raise ValueError(
+        "OpenAI API key not set in environment variables"
+    )
+
 
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
     api_key=openai_api_key
 )
 
+
 def send_otp_email(to_email, otp):
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_APP_PASSWORD")
     if not sender_email or not sender_password:
-        raise ValueError("Sender email credentials not set in environment variables")
+        raise ValueError(
+            "Sender email credentials not set in environment variables"
+        )
 
     message = MIMEMultipart("alternative")
     message["Subject"] = "Your OTP Verification Code"
@@ -59,6 +68,7 @@ def send_otp_email(to_email, otp):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, to_email, message.as_string())
+
 
 # Configure upload folder
 UPLOAD_FOLDER = 'static/uploads'
@@ -74,19 +84,34 @@ config = pdfkit.configuration(
     # wkhtmltopdf=r"/usr/local/bin/wkhtmltopdf",
 )
 
+
 def categorize(subject, body):
     combined = (subject + " " + body).lower()
     if "internship" in combined:
         return "Internship"
-    elif "full time" in combined or "full-time" in combined or "job" in combined:
+    elif (
+        "full time" in combined
+        or "full-time" in combined
+        or "job" in combined
+    ):
         return "Full-time Job"
     elif "hackathon" in combined:
         return "Hackathon"
-    elif any(k in combined for k in ["apply", "register", "opportunity", "opening",
-                                     "recruitment", "role"]):
+    elif any(
+        k in combined
+        for k in [
+            "apply",
+            "register",
+            "opportunity",
+            "opening",
+            "recruitment",
+            "role",
+        ]
+    ):
         return "Other Opportunities"
     else:
         return "Ignore"
+
 
 def clean_email_body(raw_html):
     soup = BeautifulSoup(raw_html, 'html.parser')
@@ -95,17 +120,28 @@ def clean_email_body(raw_html):
     body = soup.body or soup
     text = body.get_text(separator="\n").strip()
 
-    keywords = ['deadline', 'apply', 'CTC', 'salary', 'last date', 'job', 'internship']
+    keywords = [
+        'deadline',
+        'apply',
+        'CTC',
+        'salary',
+        'last date',
+        'job',
+        'internship',
+    ]
     for kw in keywords:
         regex = re.compile(rf'\b({kw})\b', re.IGNORECASE)
         text = regex.sub(
             r'<span style="background: #fff3cd; color: #a76f00; font-weight: bold;">\1</span>',
-            text)
+            text,
+        )
     text = re.sub(
         r'(https?://[^\s]+)',
         r'<a href="\1" target="_blank" style="color:#4b0082; text-decoration:underline;">\1</a>',
-        text)
+        text,
+    )
     return text
+
 
 def fetch_emails(email_address, email_password):
     results = []
@@ -119,7 +155,7 @@ def fetch_emails(email_address, email_password):
     for eid in email_ids[-50:]:
         _, msg_data = imap.fetch(eid, "(RFC822)")
         raw_email = msg_data[0][1]
-        msg = email.message_from_bytes(raw_email)
+        msg = email_module.message_from_bytes(raw_email)
 
         subject, encoding = decode_header(msg["Subject"])[0]
         if isinstance(subject, bytes):
@@ -159,7 +195,13 @@ def fetch_emails(email_address, email_password):
         # Deadline Extraction: keyword-based first
         found = False
         for line in plain_text_body.splitlines():
-            for kw in ["deadline", "apply before", "last date", "register by", "before"]:
+            for kw in [
+                "deadline",
+                "apply before",
+                "last date",
+                "register by",
+                "before",
+            ]:
                 if kw in line.lower():
                     parsed = dateparser.parse(line, settings={'PREFER_DATES_FROM': 'future'})
                     if parsed:
@@ -193,14 +235,16 @@ def fetch_emails(email_address, email_password):
                 "deadline": deadline,
                 "eligibility": eligibility,
                 "application_link": app_link,
-                "category": category
+                "category": category,
             })
             print(f"[DEBUG] {subject} → Deadline: {deadline}")
 
     imap.logout()
     return results
 
+
 email_cache = []
+
 
 @app.route('/')
 def home():
@@ -217,6 +261,7 @@ def register():
         if not email_input or not app_password:
             flash("Email and App Password are required.", "error")
             return render_template('registration.html')
+
         otp = generate_otp()
         otp_store[email_input] = otp
         try:
@@ -224,9 +269,12 @@ def register():
         except Exception as e:
             flash(f"Failed to send OTP email: {str(e)}", "error")
             return render_template('registration.html')
+
         session['pending_email'] = email_input
         session['pending_password'] = app_password
         return redirect(url_for('verify_otp'))
+
+
     return render_template('registration.html')
 
 
@@ -238,6 +286,7 @@ def verify_otp():
         if not pending_email or not user_otp:
             flash("Invalid session or OTP.", "error")
             return redirect(url_for('register'))
+
         real_otp = otp_store.get(pending_email)
         if real_otp == user_otp:
             session['email'] = pending_email
@@ -248,6 +297,7 @@ def verify_otp():
             return redirect(url_for('home'))
         else:
             flash("Incorrect OTP. Please try again.", "error")
+
     return render_template('otp_verification.html')
 
 
@@ -259,24 +309,32 @@ def analyze():
     if not pending_email or not pending_password:
         flash("Email credentials not found in session. Please register again.", "error")
         return redirect(url_for('register'))
+
     email_cache = fetch_emails(pending_email, pending_password)
     return redirect(url_for('show_categories'))
 
 
 @app.route('/categories')
 def show_categories():
-    predefined = ["Internship", "Full-time Job", "Hackathon", "Other Opportunities"]
+    predefined = [
+        "Internship",
+        "Full-time Job",
+        "Hackathon",
+        "Other Opportunities",
+    ]
     category_counts = {cat: 0 for cat in predefined}
 
-    for email in email_cache:
-        cat = email["category"]
+    for email_item in email_cache:
+        cat = email_item["category"]
         if cat in category_counts:
             category_counts[cat] += 1
         else:
             category_counts["Other Opportunities"] += 1
 
     total = len(email_cache)
-    return render_template("categories.html", category_counts=category_counts, total=total)
+    return render_template(
+        "categories.html", category_counts=category_counts, total=total
+    )
 
 
 @app.route('/opportunities/<category>')
@@ -287,8 +345,10 @@ def show_opportunities(category):
 
 # Resume functionality integration
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def generate_role_suggestions(role):
     try:
@@ -296,17 +356,22 @@ def generate_role_suggestions(role):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a professional resume writer. Generate 3 different professional summaries for the given job role. Each summary should be 2-3 sentences long and highlight relevant skills and experience."
+                    "content": (
+                        "You are a professional resume writer. Generate 3 different "
+                        "professional summaries for the given job role. Each summary "
+                        "should be 2-3 sentences long and highlight relevant skills and "
+                        "experience."
+                    ),
                 },
                 {
                     "role": "user",
-                    "content": f"Generate professional summary for a {role} position."
-                }
+                    "content": f"Generate professional summary for a {role} position.",
+                },
             ],
             model="gpt-4o-mini",
             temperature=0.7,
             max_tokens=300,
-            top_p=1
+            top_p=1,
         )
         suggestions = [choice.message.content.strip() for choice in response.choices]
         return suggestions
@@ -314,29 +379,39 @@ def generate_role_suggestions(role):
         print(f"Error generating role suggestions: {str(e)}")
         return []
 
+
 def generate_skill_suggestions(role):
     try:
         response = client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a professional resume writer. Generate 5-7 relevant technical and soft skills for the given job role. Format each skill as a single word or short phrase without numbering."
+                    "content": (
+                        "You are a professional resume writer. Generate 5-7 relevant "
+                        "technical and soft skills for the given job role. Format each "
+                        "skill as a single word or short phrase without numbering."
+                    ),
                 },
                 {
                     "role": "user",
-                    "content": f"Generate relevant skills for a {role} position without numbering."
-                }
+                    "content": f"Generate relevant skills for a {role} position without numbering.",
+                },
             ],
             model="gpt-4o-mini",
             temperature=0.7,
             max_tokens=200,
-            top_p=1
+            top_p=1,
         )
-        suggestions = [skill.strip() for skill in response.choices[0].message.content.split('\n') if skill.strip()]
+        suggestions = [
+            skill.strip()
+            for skill in response.choices[0].message.content.split('\n')
+            if skill.strip()
+        ]
         return suggestions
     except Exception as e:
         print(f"Error generating skill suggestions: {str(e)}")
         return []
+
 
 def create_presentation(data):
     prs = Presentation()
@@ -432,9 +507,8 @@ def create_presentation(data):
         p.text = data['ref2']
 
     # Save the presentation
-    presentation_path = "resume_presentation.pptx"
-    prs.save(presentation_path)
-    return presentation_path
+    prs.save("resume_presentation.pptx")
+
 
 @app.route('/resume', methods=['GET', 'POST'])
 def resume_form():
@@ -456,6 +530,7 @@ def resume_form():
         return render_template(template, data=data)
     return render_template('resume/form.html')
 
+
 @app.route('/resume/get_role_suggestions', methods=['POST'])
 def resume_get_role_suggestions():
     data = request.get_json()
@@ -463,12 +538,14 @@ def resume_get_role_suggestions():
     suggestions = generate_role_suggestions(role)
     return jsonify({'suggestions': suggestions})
 
+
 @app.route('/resume/get_skill_suggestions', methods=['POST'])
 def resume_get_skill_suggestions():
     data = request.get_json()
     role = data.get('role', '')
     suggestions = generate_skill_suggestions(role)
     return jsonify({'suggestions': suggestions})
+
 
 @app.route('/resume/download', methods=['POST'])
 def resume_download():
@@ -504,7 +581,7 @@ def resume_download():
 
     # If presentation format is requested
     if data.get('output_presentation'):
-        presentation_path = create_presentation(data)
+        create_presentation(data)
         return jsonify({
             'pdf_url': url_for('resume_download_pdf'),
             'presentation_url': url_for('resume_download_presentation')
@@ -512,13 +589,16 @@ def resume_download():
 
     return send_file('resume.pdf', as_attachment=True)
 
+
 @app.route('/resume/download_pdf')
 def resume_download_pdf():
     return send_file('resume.pdf', as_attachment=True)
 
+
 @app.route('/resume/download_presentation')
 def resume_download_presentation():
     return send_file('resume_presentation.pptx', as_attachment=True)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
