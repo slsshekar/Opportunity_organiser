@@ -135,12 +135,16 @@ def clean_email_body(raw_html):
     for kw in keywords:
         regex = re.compile(rf'\b({kw})\b', re.IGNORECASE)
         text = regex.sub(
-            r'<span style="background: #fff3cd; color: #a76f00; font-weight: bold;">\1</span>',
+            r'<span style="background: #fff3cd; color: #a76f00; '
+            r'font-weight: bold;">\1</span>',
+
             text,
         )
     text = re.sub(
         r'(https?://[^\s]+)',
-        r'<a href="\1" target="_blank" style="color:#4b0082; text-decoration:underline;">\1</a>',
+       r'<a href="\1" target="_blank" style="color:#4b0082; '
+       r'text-decoration:underline;">\1</a>',
+
         text,
     )
     return text
@@ -420,7 +424,10 @@ def generate_skill_suggestions(role):
                 },
                 {
                     "role": "user",
-                    "content": f"Generate relevant skills for a {role} position without numbering.",
+                   "content": (
+                         f"Generate relevant skills for a {role} "
+                        "position without numbering."),
+
                 },
             ],
             model="gpt-4o-mini",
@@ -588,7 +595,9 @@ def resume_download():
             data['profile_image'].lstrip('/'))
         if os.path.exists(image_path):
             with open(image_path, 'rb') as img_file:
-                data['profile_image'] = f"data:image/jpeg;base64,{base64.b64encode(img_file.read()).decode()}"
+                encoded_image = base64.b64encode(img_file.read()).decode()
+                data['profile_image'] = f"data:image/jpeg;base64,{encoded_image}"
+
 
     # Choose template based on format
     template = 'resume/resume_professional.html' if data.get(
