@@ -24,17 +24,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install flake8
-      working-directory: Opportunity_organiser
 
     - name: Run linting
       run: |
         flake8 .
-      working-directory: Opportunity_organiser
 
     - name: Run tests
       run: |
         pytest
-      working-directory: Opportunity_organiser
 
 
     # - name: Deploy to Heroku
