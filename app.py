@@ -142,8 +142,8 @@ def clean_email_body(raw_html):
         )
     text = re.sub(
         r'(https?://[^\s]+)',
-       r'<a href="\1" target="_blank" style="color:#4b0082; '
-       r'text-decoration:underline;">\1</a>',
+        r'<a href="\1" target="_blank" style="color:#4b0082; '
+        r'text-decoration:underline;">\1</a>',
 
         text,
     )
@@ -386,8 +386,10 @@ def generate_role_suggestions(role):
                         "You are a professional resume writer.  "
                         "Generate 3 different professional  "
                         "summaries for the given job role. Each summary "
-                        "should be 2-3 sentences long  "
-                        "and highlight relevant skills and experience."),
+                        "should be 2-3 sentences long and highlight relevant "
+                        "skills and experience."
+                    ),
+
                 },
                 {
                     "role": "user",
@@ -420,12 +422,52 @@ def generate_skill_suggestions(role):
                         "the given job role."
                         " Format each "
                         "skill as a single word or short phrase "
+                        "without numbering."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Generate relevant skills for a {role} "
+                        "position without numbering."
+                    ),
+                },
+            ],
+            model="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=200,
+            top_p=1,
+        )
+        suggestions = [
+            skill.strip()
+            for skill in response.choices[0].message.content.split('\n')
+            if skill.strip()
+        ]
+        return suggestions
+    except Exception as e:
+        print(f"Error generating skill suggestions: {str(e)}")
+        return []
+
+
+def generate_skill_suggestions(role):
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a professional resume writer."
+                        " Generate 5-7 relevant "
+                        "technical and soft skills for "
+                        "the given job role."
+                        " Format each "
+                        "skill as a single word or short phrase "
                         "without numbering."),
                 },
                 {
                     "role": "user",
-                   "content": (
-                         f"Generate relevant skills for a {role} "
+                    "content": (
+                        f"Generate relevant skills for a {role} "
                         "position without numbering."),
 
                 },
@@ -598,7 +640,6 @@ def resume_download():
                 encoded_image = base64.b64encode(img_file.read()).decode()
                 data['profile_image'] = f"data:image/jpeg;base64,{encoded_image}"
 
-
     # Choose template based on format
     template = 'resume/resume_professional.html' if data.get(
         'format') == 'professional' else 'resume/resume.html'
@@ -614,7 +655,7 @@ def resume_download():
         'margin-left': '0.75in',
         'encoding': 'UTF-8',
         'no-outline': None,
-        'quiet': ''
+        'quiet': '',
     }
 
     # Generate the PDF
@@ -622,14 +663,15 @@ def resume_download():
         html,
         'resume.pdf',
         configuration=config,
-        options=options)
+        options=options,
+    )
 
     # If presentation format is requested
     if data.get('output_presentation'):
         create_presentation(data)
         return jsonify({
             'pdf_url': url_for('resume_download_pdf'),
-            'presentation_url': url_for('resume_download_presentation')
+            'presentation_url': url_for('resume_download_presentation'),
         })
 
     return send_file('resume.pdf', as_attachment=True)
